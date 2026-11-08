@@ -1,0 +1,865 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Gestor de Projetos Rurais com IA: planeje e acompanhe os projetos da propriedade.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<title>Gestor de Projetos Rurais</title>
+<style>
+:root{--plan:#9a7442;--bg:#f5f6f1;--card:#fff;--ink:#1f2a1e;--muted:#66705f;--line:#e2e6da;--pri:#2f7a3d;--pri2:#e6f2e3;--ok:#1e8e5a;--okb:#e3f5ec;--warn:#b7791f;--warnb:#fdf3df;--bad:#c0392b;--badb:#fbe7e5;--shadow:0 1px 3px rgba(16,24,40,.08)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--plan:#cfa76d;--bg:#121611;--card:#1b211a;--ink:#e8eee5;--muted:#9aa595;--line:#2c3529;--pri:#7cc68a;--pri2:#1f3322;--ok:#4cc38a;--okb:#16352a;--warn:#e0a84a;--warnb:#3a2f17;--bad:#ff7b6b;--badb:#40211e;--shadow:none}}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark}}
+:root[data-theme="dark"]{color-scheme:dark;--plan:#cfa76d;--bg:#121611;--card:#1b211a;--ink:#e8eee5;--muted:#9aa595;--line:#2c3529;--pri:#7cc68a;--pri2:#1f3322;--ok:#4cc38a;--okb:#16352a;--warn:#e0a84a;--warnb:#3a2f17;--bad:#ff7b6b;--badb:#40211e;--shadow:none}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.45}
+header{background:var(--card);border-bottom:1px solid var(--line);padding:12px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:env(safe-area-inset-top,0px);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));z-index:5}
+header h1{font-size:18px;margin:0;flex:1}
+header h1 span{color:var(--pri)}
+.logo{width:32px;height:32px;border-radius:8px;background:var(--pri);color:#fff;display:grid;place-items:center;font-weight:700}
+main{max-width:1180px;margin:0 auto;padding-block:20px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header h1{min-width:0}
+button,.btn{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px 14px;border-radius:8px;cursor:pointer}
+button:hover{border-color:var(--pri)}
+.primary{background:var(--pri);border-color:var(--pri);color:#fff}
+.primary:hover{filter:brightness(1.08)}
+.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+.danger{color:var(--bad)}
+input,textarea,select{font:inherit;width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+textarea{min-height:90px;resize:vertical}
+label{display:block;font-size:13px;font-weight:600;margin:12px 0 4px;color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;box-shadow:var(--shadow)}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}
+@media (max-width:760px){.g2,.g3,.g4{grid-template-columns:1fr}}
+h2{font-size:20px;margin:0 0 4px}h3{font-size:15px;margin:0 0 10px}
+.muted{color:var(--muted)}.small{font-size:13px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.spacer{flex:1}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:16px 0;overflow-x:auto}
+.tab{border:none;background:none;border-bottom:2px solid transparent;border-radius:0;padding:10px 14px;color:var(--muted);white-space:nowrap}
+.tab.on{color:var(--pri);border-bottom-color:var(--pri);font-weight:600}
+.kpi .v{font-size:26px;font-weight:700}.kpi .l{font-size:13px;color:var(--muted)}
+.bar{height:8px;background:var(--line);border-radius:99px;overflow:hidden}.bar>i{display:block;height:100%;background:var(--pri)}
+.pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:600}
+.p-ok{background:var(--okb);color:var(--ok)}.p-warn{background:var(--warnb);color:var(--warn)}.p-bad{background:var(--badb);color:var(--bad)}.p-pri{background:var(--pri2);color:var(--pri)}
+.projlist .card{cursor:pointer}.projlist .card:hover{border-color:var(--pri)}
+/* kanban */
+.kanban{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media (max-width:760px){.kanban{grid-template-columns:1fr}}
+.col{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;min-height:200px}
+.col.over{border-color:var(--pri);background:var(--pri2)}
+.col h3{display:flex;justify-content:space-between}
+.task{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px;cursor:grab}
+.task.late{border-left:4px solid var(--bad)}
+.task b{display:block;font-size:14px}
+.task .meta{font-size:12px;color:var(--muted);margin-top:4px;display:flex;gap:8px;flex-wrap:wrap}
+.task .mv{display:flex;gap:4px;margin-top:6px}.task .mv button{padding:2px 8px;font-size:12px}
+/* gantt */
+.gantt{overflow-x:auto}
+.gr{display:grid;grid-template-columns:230px 1fr;align-items:center;border-bottom:1px solid var(--line);min-width:640px}
+.gr .n{font-size:13px;padding:7px 8px 7px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gr .t{position:relative;height:30px}
+.gb{position:absolute;top:7px;height:16px;border-radius:5px;background:var(--plan);opacity:.9}
+.gb.done{background:var(--ok)}.gb.late{background:var(--bad)}
+.today{position:absolute;top:0;bottom:0;width:2px;background:var(--warn)}
+.gh{font-size:11px;color:var(--muted);position:relative;height:20px}
+.gh span{position:absolute;transform:translateX(-50%)}
+/* risk matrix */
+.matrix{display:grid;grid-template-columns:70px repeat(3,1fr);gap:4px}
+.mc{min-height:80px;border-radius:8px;padding:6px;font-size:12px}
+.mh{font-size:12px;color:var(--muted);display:flex;align-items:center;justify-content:center;text-align:center}
+.lv1{background:var(--okb)}.lv2{background:var(--warnb)}.lv3{background:var(--badb)}
+.mc .rk{background:var(--card);border-radius:6px;padding:3px 6px;margin-bottom:3px;border:1px solid var(--line)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+td.num,th.num{text-align:right}
+td input,td select{padding:5px 7px}
+/* chat */
+.chat{display:flex;flex-direction:column;gap:10px;max-height:460px;overflow-y:auto;padding:4px}
+.msg{padding:10px 13px;border-radius:12px;max-width:85%;white-space:pre-wrap}
+.msg.u{align-self:flex-end;background:var(--pri);color:#fff}
+.msg.a{align-self:flex-start;background:var(--bg);border:1px solid var(--line)}
+.sugs button{font-size:13px;padding:5px 10px;border-radius:99px}
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(10,15,25,.5);display:none;align-items:center;justify-content:center;padding:16px;z-index:20}
+.modal.on{display:flex}
+.modal .card{width:100%;max-width:560px;max-height:90vh;overflow:auto}
+.loading{display:none;position:fixed;inset:0;background:rgba(10,15,25,.55);z-index:30;align-items:center;justify-content:center;color:#fff;flex-direction:column;gap:14px;font-size:16px}
+.loading.on{display:flex}
+.spin{width:44px;height:44px;border:4px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:s 1s linear infinite}
+@keyframes s{to{transform:rotate(360deg)}}
+.notice{background:var(--warnb);color:var(--ink);border-radius:10px;padding:10px 14px;font-size:13px}
+.hide{display:none!important}
+.caption{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);max-width:min(720px,calc(100% - 32px));background:var(--ink);color:var(--bg);padding:14px 20px;border-radius:12px;font-size:16px;z-index:45;box-shadow:0 8px 30px rgba(0,0,0,.25);display:none}
+.caption.on{display:block}.caption b{color:var(--plan)}
+.demo-hl{outline:3px solid var(--plan)!important;outline-offset:2px}
+@media (max-width:640px){header{flex-wrap:wrap;gap:4px 8px;padding-block:10px}header h1{flex:1 1 calc(100% - 50px);font-size:16px}header .ghost{padding:6px 8px;font-size:13px}.matrix{grid-template-columns:52px repeat(3,1fr)}.mc{min-height:64px;font-size:11px}.cmp{grid-template-columns:70px 1fr 40px}}
+.scale{display:flex;gap:6px;flex-wrap:wrap}.scale label{margin:0;display:flex;align-items:center;justify-content:center;width:44px;height:40px;border:1px solid var(--line);border-radius:8px;cursor:pointer;color:var(--ink);font-size:15px}
+.scale input{display:none}.scale input:checked+span{font-weight:700}.scale label:has(input:checked){background:var(--pri);border-color:var(--pri);color:#fff}
+.q{padding:14px 0;border-bottom:1px solid var(--line)}.q:last-child{border-bottom:none}.q>b{display:block;margin-bottom:8px}
+.opts{display:flex;gap:6px;flex-wrap:wrap}.opts label{margin:0;padding:7px 12px;border:1px solid var(--line);border-radius:99px;cursor:pointer;color:var(--ink);font-weight:500;font-size:14px}
+.opts input{display:none}.opts label:has(input:checked){background:var(--pri2);border-color:var(--pri);color:var(--pri);font-weight:600}
+.cmp{display:grid;grid-template-columns:150px 1fr 48px;gap:8px;align-items:center;font-size:14px;margin:6px 0}
+.cmp .bar{height:14px}.cmp .bar.b>i{background:var(--plan)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}.seg button{border:none;border-radius:0}.seg button.on{background:var(--pri);color:#fff}
+ul.clean{margin:0;padding-left:18px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:10px;font-size:14px;opacity:0;transition:.3s;z-index:40}
+.toast.on{opacity:1}
+@media print{header,.tabs,.noprint,button{display:none!important}body{background:#fff;color:#000}.card{box-shadow:none;break-inside:avoid}.tabpane{display:block!important;margin-bottom:18px}}
+.hero{display:flex;align-items:center;gap:16px;border-radius:16px;padding:22px 24px;background:linear-gradient(135deg,var(--pri2),var(--card));border:1px solid var(--line)}
+.hero-txt{flex:1;min-width:0}.hero-date{font-size:13px;color:var(--muted)}.hero-date::first-letter{text-transform:uppercase}
+.hero-h{font-size:26px;margin:2px 0 6px}.hero-sub{color:var(--ink);max-width:560px}.hero-btn{margin-top:14px;padding:10px 18px}
+.hero-art{font-size:64px;line-height:1}
+.fk{display:flex;align-items:center;gap:12px}.fi{font-size:26px;width:44px;height:44px;border-radius:12px;background:var(--pri2);display:grid;place-items:center;flex:none}
+.crop{font-size:20px}
+.home2{grid-template-columns:2fr 1fr}@media (max-width:860px){.home2{grid-template-columns:1fr}}
+.nt{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);cursor:pointer}.nt:last-child{border-bottom:none}.nt b{font-size:14px}.nt:hover b{color:var(--pri)}
+.tip{background:var(--warnb);border-color:transparent}
+.steps>div{display:flex;flex-direction:column;gap:6px}
+@media (max-width:760px){.kpis{grid-template-columns:1fr 1fr}.kpis .card{padding:14px}.kpis .fi{width:36px;height:36px;font-size:20px}.kpis .v{font-size:22px}}
+.nt .pill{white-space:nowrap}
+@media (max-width:640px){.hero{padding:18px}.hero-art{display:none}.hero-h{font-size:22px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">🌱</div>
+  <h1>Gestor de Projetos Rurais <span>com IA</span></h1>
+  <button class="ghost noprint" onclick="go('home')">Projetos</button><button class="ghost noprint" onclick="go('eval')">Avaliação</button><button class="ghost noprint" onclick="openCfg()" title="Configurar IA">⚙ IA</button>
+  
+</header>
+<main id="app"></main>
+
+
+<div class="modal" id="modal"><div class="card" id="modalBody"></div></div>
+<div class="loading" id="loading"><div class="spin"></div><div id="loadingTxt">A IA está montando o plano do projeto…</div></div>
+<div class="toast" id="toast"></div>
+<div class="caption" id="caption"></div>
+
+<script>
+// ================== ESTADO ==================
+const LS = 'gpia.projects', LSCFG = 'gpia.cfg';
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+let projects = [];
+let DB = null, dbChecked = false, loaded = false, aiState = 'off', curView = 'home';
+const savedP = {}, savedE = {}; let chain = Promise.resolve();
+let cfg = store.get(LSCFG, { key:'', model:'gemini-flash-latest' }); if(cfg.key) aiState='on';
+let cur = null, tab = 'geral';
+const save = () => persist('projetos', projects, savedP, LS);
+const uid = () => Math.random().toString(36).slice(2, 9);
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const brl = v => (Number(v)||0).toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+const today = () => new Date().toISOString().slice(0,10);
+const fmt = d => d ? d.split('-').reverse().join('/') : '—';
+const addDays = (d, n) => { const x = new Date(d+'T12:00:00'); x.setDate(x.getDate()+n); return x.toISOString().slice(0,10); };
+const diff = (a, b) => Math.round((new Date(b+'T12:00:00') - new Date(a+'T12:00:00'))/864e5);
+function toast(t){ const e=$('#toast'); e.textContent=t; e.classList.add('on'); setTimeout(()=>e.classList.remove('on'),2200); }
+function loading(on, t){ $('#loading').classList.toggle('on', on); if(t) $('#loadingTxt').textContent=t; }
+function modal(html){ $('#modalBody').innerHTML = html; $('#modal').classList.add('on'); }
+function closeModal(){ $('#modal').classList.remove('on'); }
+$('#modal').addEventListener('click', e => { if(e.target.id==='modal') closeModal(); });
+
+// ================== IA (Gemini) ==================
+async function gemini(prompt, json){
+  const models = [cfg.model, 'gemini-2.5-flash', 'gemini-flash-latest'].filter((v,i,a)=>v && a.indexOf(v)===i);
+  let lastErr;
+  for (const m of models){
+    try{
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent`, {
+        method:'POST', headers:{'Content-Type':'application/json','x-goog-api-key':cfg.key},
+        body: JSON.stringify({ contents:[{role:'user', parts:[{text:prompt}]}],
+          generationConfig: json ? {responseMimeType:'application/json', temperature:0.4} : {temperature:0.5} })
+      });
+      const data = await r.json();
+      if(!r.ok) throw new Error(data?.error?.message || ('HTTP '+r.status));
+      const txt = data.candidates?.[0]?.content?.parts?.map(p=>p.text).join('') || '';
+      return json ? JSON.parse(txt.replace(/^```json|```$/g,'').trim()) : txt;
+    }catch(e){ lastErr = e; }
+  }
+  throw lastErr;
+}
+
+const SYS = `Você é um gerente de projetos experiente (boas práticas do PMBOK) que ajuda pequenos produtores rurais cooperados do Espírito Santo (café conilon e arábica, pimenta-do-reino, avicultura de postura, pecuária leiteira, hortaliças) a planejar projetos da propriedade. Use português simples do campo. Considere clima, safra, mão de obra, insumos (que podem ser comprados na loja agropecuária da cooperativa) e crédito rural. Quando o assunto for técnico (adubação, defensivos, irrigação), recomende validar com um agrônomo ou técnico. Nunca peça dados pessoais (LGPD).`;
+
+function planPrompt(f){
+  return `${SYS}
+Monte o plano do projeto abaixo. Datas no formato AAAA-MM-DD, todas entre ${f.inicio} e ${f.prazo}. A soma dos custos das tarefas deve ficar dentro do orçamento, guardando cerca de 10% como reserva. Use apenas os nomes da equipe informada como responsáveis.
+Produtor/propriedade: ${f.empresa} | Cultura/atividade: ${f.ramo} | Área: ${f.area||'não informada'} ha | Município: ${f.municipio||'não informado'}
+Projeto: ${f.nome}
+Descrição do dono: ${f.descricao}
+Início: ${f.inicio} | Prazo final: ${f.prazo}
+Orçamento: R$ ${f.orcamento}
+Equipe: ${f.equipe.join(', ')}
+Responda SOMENTE com JSON neste formato:
+{"objetivo":"frase com meta mensurável","escopoInclui":["..."],"escopoExclui":["..."],
+"tarefas":[{"fase":"Planejamento|Preparação|Execução|Encerramento","titulo":"...","responsavel":"...","inicio":"AAAA-MM-DD","fim":"AAAA-MM-DD","custo":0}],
+"riscos":[{"descricao":"...","prob":1,"impacto":1,"resposta":"o que fazer para evitar","responsavel":"..."}],
+"proximos":["3 ações para esta semana"],"dicas":["3 dicas para economizar"]}
+Regras: 10 a 16 tarefas pequenas em ordem lógica; 4 a 6 riscos; prob e impacto de 1 (baixo) a 3 (alto).`;
+}
+
+// ================== MODO DEMONSTRAÇÃO (sem IA) ==================
+function demoPlan(f){
+  const days = Math.max(7, diff(f.inicio, f.prazo));
+  const txt = (f.nome + ' ' + f.descricao + ' ' + f.ramo).toLowerCase();
+  const rural = RURAL.find(r => r.k.test(txt));
+  const ev = /evento|festa|inaugura|feira|workshop|dia de campo/i.test(txt);
+  const base = rural ? rural.t : ev ? [
+    ['Planejamento','Definir tema, público e oferta especial do dia',0,.06,0],
+    ['Planejamento','Montar lista de convidados',.04,.15,0],
+    ['Planejamento','Pedir 3 orçamentos de cada fornecedor',.04,.18,0],
+    ['Preparação','Fechar alimentação/coquetel',.18,.25,.45],
+    ['Preparação','Criar convite e artes de divulgação',.08,.15,0],
+    ['Preparação','Formulário de confirmação de presença',.15,.17,0],
+    ['Preparação','Divulgação em redes sociais e WhatsApp',.25,.92,.08],
+    ['Preparação','Contratar som e fotografia',.25,.4,.12],
+    ['Preparação','Comprar brindes e materiais',.4,.65,.1],
+    ['Preparação','Decoração e impressos',.6,.88,.11],
+    ['Preparação','Confirmar presenças e enviar lembrete',.85,.93,0],
+    ['Execução','Montagem e realização do evento',.97,1,.04],
+    ['Encerramento','Pós-evento: agradecer, enviar oferta e medir resultados',1,1.1,0]
+  ] : [
+    ['Planejamento','Detalhar objetivo e resultado esperado',0,.05,0],
+    ['Planejamento','Levantar necessidades e o que já existe',.03,.12,0],
+    ['Planejamento','Pesquisar fornecedores e pedir 3 orçamentos',.08,.22,0],
+    ['Preparação','Definir e aprovar a solução',.2,.28,0],
+    ['Preparação','Comprar materiais e contratar serviços',.28,.45,.45],
+    ['Preparação','Preparar a equipe (treinamento rápido)',.4,.55,.08],
+    ['Execução','Executar a primeira etapa',.45,.65,.15],
+    ['Execução','Executar a segunda etapa',.62,.82,.12],
+    ['Execução','Divulgar para clientes',.7,.95,.1],
+    ['Execução','Testar e ajustar',.85,.95,0],
+    ['Encerramento','Entrega/lançamento',.97,1,0],
+    ['Encerramento','Avaliar resultados e lições aprendidas',1,1.08,0]
+  ];
+  const usable = f.orcamento * .9;
+  const eq = f.equipe.length ? f.equipe : ['Dono'];
+  return {
+    objetivo: `Concluir "${f.nome}" até ${fmt(f.prazo)}, dentro do orçamento de ${brl(f.orcamento)}, ${rural ? 'com resultado medido em produtividade, qualidade e custo por hectare (ou por lote).' : 'com resultado medido em clientes ou vendas novas.'}`,
+    escopoInclui: rural ? rural.inc : ev ? ['Convites e divulgação','Confirmação de presença','Alimentação, som e decoração','Oferta especial e coleta de contatos','Ações de pós-evento'] : ['Planejamento e orçamentos','Compras e contratações','Execução das etapas','Divulgação','Avaliação dos resultados'],
+    escopoExclui: ['Mudanças que não estejam no orçamento','Contratação de equipe fixa','Obras ou serviços não relacionados ao objetivo'],
+    tarefas: base.map((b,i)=>({ id:uid(), fase:b[0], titulo:b[1], responsavel:eq[i%eq.length],
+      inicio:addDays(f.inicio, Math.round(days*b[2])), fim:addDays(f.inicio, Math.max(Math.round(days*b[3]), Math.round(days*b[2]))), custo:Math.round(usable*b[4]/10)*10, status:'todo' })),
+    riscos: (rural ? RISCOS_RURAIS : []).concat([
+      {descricao:'Atrasos de fornecedores', prob:2, impacto:3, resposta:'Fechar contratos cedo, com data e multa, e ter um contato reserva'},
+      {descricao:'Estourar o orçamento', prob:2, impacto:2, resposta:'Registrar todos os gastos no sistema e usar a reserva só em emergência'},
+      {descricao:'Equipe sobrecarregada', prob: eq.length<2?3:2, impacto:3, resposta:'Distribuir tarefas, contratar ajuda pontual e revisar o quadro semanalmente'},
+      {descricao: ev ? 'Pouca adesão do público' : 'Clientes não perceberem a novidade', prob:2, impacto:3, resposta:'Divulgar com antecedência e mandar lembretes'},
+      {descricao:'Imprevistos de última hora (chuva, falta de energia, doença)', prob:1, impacto:2, resposta:'Ter plano B e checklist de véspera'}
+    ]).slice(0,6).map(r=>({...r, id:uid(), responsavel:eq[0]})),
+    proximos: ['Revisar este plano com a equipe','Pedir os primeiros orçamentos','Mover para "Em andamento" a primeira tarefa no quadro'],
+    dicas: rural ? ['Comprar insumos em conjunto com vizinhos cooperados para negociar preço','Consultar as linhas de crédito rural (ex.: Pronaf) antes de investir','Pedir orientação técnica antes de comprar adubo e defensivos'] : ['Negociar pagamento à vista com desconto','Buscar parceiros que troquem divulgação por patrocínio','Usar ferramentas gratuitas (Canva, Google Forms, WhatsApp Business)']
+  };
+}
+
+
+// ================== MODELOS RURAIS (modo demonstração) ==================
+const RURAL = [
+ {k:/colheita|safra|panha/, inc:['Organização da mão de obra','Preparação de terreiro/secador e equipamentos','Colheita e pós-colheita','Armazenagem e entrega na cooperativa','Controle de custos da safra'], t:[
+  ['Planejamento','Estimar produção (sacas) e período de colheita',0,.06,0],
+  ['Planejamento','Definir número de panhadores e forma de pagamento',.04,.12,0],
+  ['Preparação','Revisar derriçadeira, peneiras e lonas',.08,.2,.1],
+  ['Preparação','Preparar terreiro/secador e limpar tulha',.12,.25,.1],
+  ['Preparação','Comprar sacaria e materiais na loja agropecuária',.15,.25,.08],
+  ['Preparação','Contratar e registrar a mão de obra temporária',.2,.3,.05],
+  ['Execução','Colheita dos talhões (por ordem de maturação)',.3,.8,.45],
+  ['Execução','Secagem e controle de umidade do café',.35,.88,.1],
+  ['Execução','Beneficiamento e classificação',.8,.92,.05],
+  ['Encerramento','Entrega/armazenagem na cooperativa',.9,.97,.04],
+  ['Encerramento','Fechar custos da safra e anotar lições',.97,1.05,0]]},
+ {k:/irriga|gotejo|aspers|represa|caixa d|poço|poco/, inc:['Levantamento da água disponível','Projeto de irrigação','Compra e instalação do sistema','Treinamento de manejo','Testes e ajustes'], t:[
+  ['Planejamento','Verificar fonte de água e outorga/licença necessária',0,.1,0],
+  ['Planejamento','Medir área e talhões a irrigar',.05,.12,0],
+  ['Planejamento','Pedir projeto e 3 orçamentos de irrigação',.1,.25,.04],
+  ['Planejamento','Avaliar crédito rural para o investimento',.15,.3,0],
+  ['Preparação','Comprar tubos, conexões, bomba e filtros',.3,.45,.55],
+  ['Execução','Abrir valas e instalar linha principal',.45,.6,.12],
+  ['Execução','Instalar gotejadores/aspersores nos talhões',.55,.75,.12],
+  ['Execução','Instalar bomba e parte elétrica',.7,.82,.07],
+  ['Execução','Testar pressão, vazamentos e uniformidade',.82,.9,0],
+  ['Encerramento','Treinar família/funcionários no manejo',.9,.96,0],
+  ['Encerramento','Montar calendário de irrigação e manutenção',.95,1,0]]},
+ {k:/aviár|aviar|galinha|postura|ovo|granja/, inc:['Adequação do aviário','Equipamentos e ambiência','Chegada e manejo do lote','Biosseguridade','Controle de produção e custos'], t:[
+  ['Planejamento','Definir tamanho do lote e meta de produção de ovos',0,.06,0],
+  ['Planejamento','Verificar exigências sanitárias e de biosseguridade',.04,.12,0],
+  ['Planejamento','Orçar equipamentos, ração e pintainhas/frangas',.08,.2,0],
+  ['Preparação','Reformar/limpar e desinfetar o aviário',.2,.4,.2],
+  ['Preparação','Instalar comedouros, bebedouros, iluminação e ventilação',.35,.55,.3],
+  ['Preparação','Comprar ração e vacinas',.5,.6,.25],
+  ['Execução','Receber o lote e fazer manejo inicial',.6,.65,.1],
+  ['Execução','Acompanhar mortalidade, consumo e postura (diário)',.65,.95,0],
+  ['Execução','Organizar coleta, classificação e entrega dos ovos',.7,.95,.05],
+  ['Encerramento','Avaliar resultado do lote e custos',.95,1.03,0]]},
+ {k:/leite|ordenh|gado|vaca|curral|pastag/, inc:['Melhoria da estrutura de ordenha','Pastagem e alimentação','Sanidade do rebanho','Qualidade do leite','Controle de custos e produção'], t:[
+  ['Planejamento','Levantar produção atual (litros/vaca/dia) e meta',0,.08,0],
+  ['Planejamento','Orçar melhorias (ordenha, resfriador, curral)',.05,.2,0],
+  ['Preparação','Reformar curral/sala de ordenha',.2,.45,.35],
+  ['Preparação','Recuperar/adubar pastagem ou plantar capineira',.2,.5,.2],
+  ['Preparação','Organizar calendário de vacinação e vermifugação',.25,.35,.08],
+  ['Execução','Implantar rotina de higiene na ordenha',.45,.55,.05],
+  ['Execução','Ajustar dieta e suplementação do rebanho',.5,.8,.17],
+  ['Execução','Registrar produção diária por vaca',.55,.95,0],
+  ['Encerramento','Comparar produção e qualidade com a meta',.95,1.03,0]]},
+ {k:/café|cafe|conilon|arábica|arabica|pimenta|lavoura|plantio|renova|muda|cacau|hortali|plantar/, inc:['Escolha e preparo da área','Análise de solo e correção','Mudas e plantio','Tratos culturais iniciais','Controle de custos'], t:[
+  ['Planejamento','Escolher talhão e medir a área',0,.06,0],
+  ['Planejamento','Coletar amostra e fazer análise de solo',.03,.15,.03],
+  ['Planejamento','Conversar com o técnico/agrônomo sobre variedade/clones e espaçamento',.1,.2,0],
+  ['Planejamento','Orçar mudas, adubos e calcário na loja agropecuária',.15,.25,0],
+  ['Preparação','Aplicar calcário e preparar o solo',.25,.4,.12],
+  ['Preparação','Encomendar mudas certificadas',.2,.3,.25],
+  ['Preparação','Marcar e abrir covas/sulcos',.4,.55,.1],
+  ['Execução','Adubação de plantio',.55,.62,.15],
+  ['Execução','Plantio das mudas',.6,.72,.12],
+  ['Execução','Irrigação de salvamento e replantio de falhas',.72,.9,.08],
+  ['Encerramento','Controle de mato e monitorar pragas (ex.: broca)',.85,1,.05],
+  ['Encerramento','Registrar custos por hectare e próximos tratos',.97,1.03,0]]},
+];
+const RISCOS_RURAIS = [
+ {descricao:'Clima: seca, excesso de chuva ou granizo', prob:2, impacto:3, resposta:'Acompanhar previsão do tempo, ter reserva de água e considerar seguro rural'},
+ {descricao:'Falta de mão de obra na hora certa', prob:2, impacto:3, resposta:'Combinar com antecedência e ter lista de reserva (vizinhos, troca de dias)'},
+ {descricao:'Alta no preço de insumos (adubo, ração, combustível)', prob:2, impacto:2, resposta:'Comprar com antecedência e negociar em grupo pela cooperativa'},
+ {descricao:'Pragas e doenças', prob:2, impacto:2, resposta:'Monitorar semanalmente e seguir orientação técnica'},
+];
+
+// ================== LÓGICA ==================
+const isLate = t => t.status!=='done' && t.fim && t.fim < today();
+function stats(p){
+  const n = p.tarefas.length, done = p.tarefas.filter(t=>t.status==='done').length;
+  const custo = p.tarefas.reduce((s,t)=>s+(+t.custo||0),0);
+  const gasto = p.tarefas.filter(t=>t.status==='done').reduce((s,t)=>s+(+t.custo||0),0);
+  const late = p.tarefas.filter(isLate);
+  const altos = p.riscos.filter(r=>r.prob*r.impacto>=6);
+  return {n, done, pct: n? Math.round(done/n*100):0, custo, gasto, late, altos, dias: diff(today(), p.prazo)};
+}
+const lvl = r => { const s=r.prob*r.impacto; return s>=6?3:s>=3?2:1; };
+const lvlName = ['','Baixa','Média','Alta'], impName = ['','Baixo','Médio','Alto'];
+
+// ================== TELAS ==================
+function go(view, id){
+  curView = view;
+  if(view==='home'){ cur=null; renderHome(); }
+  if(view==='new') renderNew();
+  if(view==='eval'){ cur=null; renderEval(); }
+  if(view==='proj'){ cur = projects.find(p=>p.id===id); tab='geral'; renderProj(); }
+  window.scrollTo(0,0);
+}
+
+const CROP_ICON = r => { r=String(r||'').toLowerCase(); return r.includes('café')||r.includes('cafe')?'☕':r.includes('pimenta')?'🌶️':r.includes('ovo')||r.includes('avic')?'🥚':r.includes('leite')||r.includes('pecu')?'🐄':r.includes('hort')?'🥬':'🌱'; };
+const DICAS = [
+  'Anote cada gasto no dia em que ele acontece. No fim da safra você sabe exatamente quanto custou cada saca.',
+  'Antes de começar a colheita, revise sacaria, terreiro e secador. Um dia parado na colheita custa caro.',
+  'Pequenas tarefas bem feitas no prazo valem mais que um plano grande que fica no papel.',
+  'Converse com o técnico da cooperativa antes de comprar adubo: a análise de solo evita gasto à toa.',
+  'Divida o projeto em etapas curtas. Ver o progresso andar dá ânimo para a família toda.',
+  'Chuva atrasou o serviço? Ajuste o prazo no sistema e a IA ajuda a reorganizar o resto.',
+  'Guarde as notas fiscais junto com o projeto. Facilita crédito rural e prestação de contas.',
+  'Água é ouro: confira vazamentos na irrigação antes do período seco.',
+  'Registrar a produção de cada talhão mostra onde vale investir na próxima safra.',
+  'Use o chat da IA para tirar dúvidas do projeto a qualquer hora, até no meio do serviço.'
+];
+function saudacao(){ const h=new Date().getHours(); return h<12?['Bom dia','☀️']:h<18?['Boa tarde','🌤️']:['Boa noite','🌙']; }
+function renderHome(){
+  const [oi, ico] = saudacao();
+  const hoje = new Date().toLocaleDateString('pt-BR',{weekday:'long', day:'numeric', month:'long'});
+  const doy = Math.floor((Date.now() - new Date(new Date().getFullYear(),0,0))/864e5);
+  const dica = DICAS[doy % DICAS.length];
+  const t0 = today(), t7 = addDays(t0, 7);
+  const all = projects.flatMap(p => (p.tarefas||[]).map(t => ({...t, _p:p})));
+  const feitas = all.filter(t=>t.status==='done').length;
+  const atrasadas = all.filter(isLate);
+  const semana = all.filter(t=>t.status!=='done' && t.fim && t.fim>=t0 && t.fim<=t7).sort((x,y)=>x.fim.localeCompare(y.fim));
+  const ativos = projects.filter(p=>stats(p).pct<100).length;
+  const proximas = [...atrasadas, ...semana].slice(0,5);
+  const quando = d => { const n=diff(t0,d); return n<0?`<span class="pill p-bad">${-n} dia(s) atrasada</span>`:n===0?'<span class="pill p-warn">hoje</span>':n===1?'<span class="pill p-warn">amanhã</span>':`<span class="pill p-pri">em ${n} dias</span>`; };
+  let animo = '';
+  if(projects.length){
+    animo = atrasadas.length ? `Tem ${atrasadas.length} tarefa(s) esperando por você. Bora colocar em dia? 💪`
+      : semana.length ? `Você tem ${semana.length} tarefa(s) para esta semana. Tudo dentro do prazo, parabéns! 👏`
+      : feitas ? `Tudo em dia por aqui. Bom trabalho! 🎉` : 'Seus projetos estão prontos. É só começar pela primeira tarefa.';
+  } else animo = 'Que bom ter você aqui. Vamos planejar juntos o próximo passo da sua propriedade?';
+  $('#app').innerHTML = `
+  <div class="hero">
+    <div class="hero-txt">
+      <div class="hero-date">${hoje}</div>
+      <h2 class="hero-h">${oi}! ${ico}</h2>
+      <div class="hero-sub">${animo}</div>
+      <button class="primary hero-btn" onclick="go('new')">+ Novo projeto com IA</button>
+    </div>
+    <div class="hero-art" aria-hidden="true">🌄</div>
+  </div>
+  ${aiState==='off' ? `<div class="notice" style="margin-top:14px">💡 Os planos estão sendo criados pelos modelos padrão de cada atividade. Para a IA completa, clique em <b>⚙ IA</b> e cole uma chave gratuita do Google Gemini.</div>`:''}${!DB && dbChecked ? `<div class="notice" style="margin-top:14px">Sem conexão com o banco de dados. Por enquanto, os dados ficam salvos só neste navegador.</div>`:''}
+  ${projects.length ? `
+  <div class="grid g4 kpis" style="margin-top:16px">
+    <div class="card kpi fk"><div class="fi">🌱</div><div><div class="v">${ativos}</div><div class="l">projeto(s) em andamento</div></div></div>
+    <div class="card kpi fk"><div class="fi">✅</div><div><div class="v">${feitas}</div><div class="l">tarefa(s) concluída(s)</div></div></div>
+    <div class="card kpi fk"><div class="fi">📅</div><div><div class="v">${semana.length}</div><div class="l">para os próximos 7 dias</div></div></div>
+    <div class="card kpi fk"><div class="fi">${atrasadas.length?'⏰':'😊'}</div><div><div class="v">${atrasadas.length}</div><div class="l">${atrasadas.length?'atrasada(s)':'nenhuma atrasada'}</div></div></div>
+  </div>` : ''}
+  <div class="grid ${projects.length?'home2':''}" style="margin-top:16px">
+    <div>
+      ${projects.length ? `<h3 style="margin:4px 0 10px">Meus projetos</h3>
+      <div class="grid g2 projlist">
+      ${projects.map(p=>{ const s=stats(p); return `
+        <div class="card" onclick="go('proj','${p.id}')">
+          <div class="row" style="gap:8px"><span class="crop">${CROP_ICON(p.ramo)}</span><div class="small muted">${esc(p.empresa)} · ${esc(p.ramo)}</div></div>
+          <h3 style="margin:8px 0 10px">${esc(p.nome)}</h3>
+          <div class="bar"><i style="width:${s.pct}%"></i></div>
+          <div class="row small muted" style="margin-top:8px"><span>${s.pct===100?'🎉 Concluído!':s.pct+'% concluído'}</span><span class="spacer"></span>
+          ${s.late.length?`<span class="pill p-bad">${s.late.length} atrasada(s)</span>`:''}<span>prazo ${fmt(p.prazo)}</span></div>
+        </div>`}).join('')}
+      </div>` : (DB && !loaded ? `<div class="card muted">Carregando seus projetos…</div>` : `
+      <div class="card">
+        <h3>Como funciona, em 3 passos</h3>
+        <div class="grid g3 steps">
+          <div><div class="fi">💬</div><b>1. Conte sua ideia</b><div class="small muted">Escreva do seu jeito o que quer fazer na propriedade.</div></div>
+          <div><div class="fi">🤖</div><b>2. A IA monta o plano</b><div class="small muted">Tarefas, cronograma, custos e riscos prontos em segundos.</div></div>
+          <div><div class="fi">🚜</div><b>3. Acompanhe no dia a dia</b><div class="small muted">Marque o que foi feito e veja o projeto avançar.</div></div>
+        </div>
+        <div style="margin-top:14px"><button class="primary" onclick="go('new')">Começar meu primeiro projeto</button></div>
+      </div>`)}
+    </div>
+    <div class="grid" style="align-content:start">
+      ${projects.length ? `<div class="card"><h3>📌 Próximas tarefas</h3>
+        ${proximas.length ? proximas.map(t=>`<div class="nt" onclick="go('proj','${t._p.id}')"><div><b>${esc(t.titulo)}</b><div class="small muted">${CROP_ICON(t._p.ramo)} ${esc(t._p.nome)}</div></div>${quando(t.fim)}</div>`).join('')
+          : `<div class="muted small">Nada para os próximos dias. Aproveite para planejar o que vem pela frente. 🌾</div>`}
+      </div>` : ''}
+      <div class="card tip"><h3>💡 Dica do campo</h3><div>${dica}</div></div>
+    </div>
+  </div>
+  `;
+}
+
+function renderNew(){
+  const d = today();
+  $('#app').innerHTML = `
+  <div class="card" style="max-width:720px;margin:0 auto">
+    <h2>Novo projeto da propriedade</h2>
+    <div class="muted">Conte com suas palavras o que quer fazer na propriedade. A IA monta escopo, tarefas, cronograma, custos e riscos.</div>
+    <div class="grid g2">
+      <div><label for="f_empresa">Propriedade / produtor</label><input id="f_empresa" placeholder="Ex.: Sítio Boa Vista"></div>
+      <div><label for="f_ramo">Cultura / atividade</label><select id="f_ramo"><option>Café conilon</option><option>Café arábica</option><option>Pimenta-do-reino</option><option>Avicultura de postura (ovos)</option><option>Pecuária leiteira</option><option>Hortaliças</option><option>Outra</option></select></div>
+      <div><label for="f_area">Área (hectares)</label><input id="f_area" type="number" min="0" step="0.1" placeholder="Ex.: 3"></div>
+      <div><label for="f_mun">Município</label><input id="f_mun" placeholder="Ex.: Santa Maria de Jetibá"></div>
+    </div>
+    <label for="f_nome">Nome do projeto</label><input id="f_nome" placeholder="Ex.: Renovação de 1 hectare de café conilon">
+    <div class="row sugs" style="margin-top:8px">${['Renovação de lavoura de café','Preparação da colheita','Instalação de irrigação por gotejo','Ampliação do aviário','Melhoria da ordenha'].map(x=>`<button type="button" onclick="$('#f_nome').value=this.textContent">${x}</button>`).join('')}</div>
+    <label for="f_desc">Descreva o projeto (o que quer fazer, por quê, o que espera)</label>
+    <textarea id="f_desc" placeholder="Ex.: Quero renovar 1 hectare de conilon que está velho e produzindo pouco. Quero plantar clones mais produtivos e aproveitar a época das chuvas."></textarea>
+    <div class="grid g3">
+      <div><label for="f_ini">Início</label><input type="date" id="f_ini" value="${d}"></div>
+      <div><label for="f_fim">Prazo final</label><input type="date" id="f_fim" value="${addDays(d,90)}"></div>
+      <div><label for="f_orc">Orçamento (R$)</label><input type="number" id="f_orc" min="0" step="100" placeholder="25000"></div>
+    </div>
+    <label for="f_eq">Quem vai trabalhar no projeto (nomes separados por vírgula)</label><input id="f_eq" placeholder="Ex.: João, Maria (família), Pedro (diarista)">
+    <div class="row" style="margin-top:16px"><button onclick="go('home')">Cancelar</button><span class="spacer"></span>
+      <button class="primary" onclick="createProject()">✨ Gerar plano com IA</button></div>
+  </div>`;
+}
+
+async function createProject(){
+  const f = { empresa:$('#f_empresa').value.trim()||'Minha propriedade', ramo:$('#f_ramo').value, area:$('#f_area').value, municipio:$('#f_mun').value.trim(), nome:$('#f_nome').value.trim(),
+    descricao:$('#f_desc').value.trim(), inicio:$('#f_ini').value, prazo:$('#f_fim').value, orcamento:+$('#f_orc').value||0,
+    equipe:$('#f_eq').value.split(',').map(s=>s.trim()).filter(Boolean) };
+  if(!f.nome || !f.descricao){ toast('Preencha o nome e a descrição do projeto'); return; }
+  if(!f.inicio || !f.prazo || f.prazo<=f.inicio){ toast('Confira as datas de início e prazo'); return; }
+  if(!f.equipe.length) f.equipe=['Dono'];
+  let plan, modo='demo';
+  loading(true, cfg.key ? 'A IA está montando o plano do projeto…' : 'Gerando plano a partir do modelo padrão…');
+  try{
+    if(cfg.key){ plan = await gemini(planPrompt(f), true); if(!plan || !Array.isArray(plan.tarefas) || !plan.tarefas.length) throw new Error('resposta incompleta da IA'); modo='ia'; }
+    else { await new Promise(r=>setTimeout(r,900)); plan = demoPlan(f); }
+  }catch(e){
+    loading(false); toast('Falha na IA: '+e.message.slice(0,80)+'. Usando o modelo padrão.');
+    plan = demoPlan(f);
+  }
+  loading(false);
+  const p = { id:uid(), ...f, criadoEm:new Date().toISOString(), modo,
+    objetivo:plan.objetivo||'', escopoInclui:plan.escopoInclui||[], escopoExclui:plan.escopoExclui||[],
+    tarefas:(plan.tarefas||[]).filter(t=>t&&t.titulo).map(t=>{ const ok=d=>/^\d{4}-\d{2}-\d{2}$/.test(d||''); const ini=ok(t.inicio)?t.inicio:f.inicio; return {id:uid(), status:'todo', ...t, fase:t.fase||'Execução', responsavel:t.responsavel||f.equipe[0], inicio:ini, fim:ok(t.fim)&&t.fim>=ini?t.fim:ini, custo:+t.custo||0}; }),
+    riscos:(plan.riscos||[]).map(r=>({id:uid(), ...r, prob:Math.min(3,Math.max(1,+r.prob||1)), impacto:Math.min(3,Math.max(1,+r.impacto||1))})),
+    proximos:plan.proximos||[], dicas:plan.dicas||[], chat:[] };
+  projects.unshift(p); save(); go('proj', p.id); toast('Plano criado!');
+}
+
+function renderProj(){
+  const p = cur, s = stats(p);
+  const T = [['geral','Visão geral'],['kanban','Quadro de tarefas'],['gantt','Cronograma'],['riscos','Riscos'],['custos','Orçamento'],['chat','Assistente IA']];
+  $('#app').innerHTML = `
+  <div class="row"><div><div class="small muted">${esc(p.empresa)} · ${esc(p.ramo)}${p.area?` · ${esc(p.area)} ha`:''}${p.municipio?` · ${esc(p.municipio)}`:''} ${p.modo==='demo'?'<span class="pill p-warn">modelo padrão</span>':'<span class="pill p-pri">gerado com IA</span>'}</div>
+  <h2>${esc(p.nome)}</h2><div class="muted small">${fmt(p.inicio)} a ${fmt(p.prazo)} · equipe: ${esc(p.equipe.join(', '))}</div></div>
+  <div class="spacer"></div>
+  <div class="row noprint"><button onclick="exportCsv()">⬇ Planilha</button><button onclick="exportJson()">⬇ Backup</button><button class="ghost danger" onclick="delProj()">Excluir</button></div></div>
+  <div class="tabs">${T.map(([k,l])=>`<button class="tab ${tab===k?'on':''}" onclick="tab='${k}';renderProj()">${l}</button>`).join('')}</div>
+  <div class="tabpane">${({geral:vGeral,kanban:vKanban,gantt:vGantt,riscos:vRiscos,custos:vCustos,chat:vChat})[tab](p,s)}</div>`;
+  if(tab==='kanban') bindKanban();
+  if(tab==='chat'){ const c=$('#chatBox'); if(c) c.scrollTop=c.scrollHeight; }
+}
+
+function vGeral(p,s){
+  const saldo = p.orcamento - s.custo;
+  return `
+  <div class="grid g4">
+    <div class="card kpi"><div class="l">Progresso</div><div class="v">${s.pct}%</div><div class="bar"><i style="width:${s.pct}%"></i></div><div class="small muted" style="margin-top:6px">${s.done} de ${s.n} tarefas</div></div>
+    <div class="card kpi"><div class="l">Dias até o prazo</div><div class="v" style="color:${s.dias<0?'var(--bad)':'inherit'}">${s.dias}</div><div class="small muted">prazo ${fmt(p.prazo)}</div></div>
+    <div class="card kpi"><div class="l">Custo previsto</div><div class="v">${brl(s.custo)}</div><div class="small" style="color:${saldo<0?'var(--bad)':'var(--ok)'}">${saldo<0?'acima':'reserva'} de ${brl(Math.abs(saldo))}</div></div>
+    <div class="card kpi"><div class="l">Alertas</div><div class="v">${s.late.length + s.altos.length}</div><div class="small muted">${s.late.length} atrasada(s) · ${s.altos.length} risco(s) alto(s)</div></div>
+  </div>
+  <div class="grid g2" style="margin-top:14px">
+    <div class="card"><h3>🎯 Objetivo</h3><div>${esc(p.objetivo)}</div>
+      <h3 style="margin-top:16px">✅ Faz parte</h3><ul class="clean">${p.escopoInclui.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
+      <h3 style="margin-top:16px">❌ Não faz parte</h3><ul class="clean">${p.escopoExclui.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>
+    <div class="card"><h3>⚡ Próximos passos</h3><ul class="clean">${p.proximos.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
+      ${s.late.length?`<h3 style="margin-top:16px;color:var(--bad)">⏰ Atrasadas</h3><ul class="clean">${s.late.map(t=>`<li>${esc(t.titulo)} <span class="muted small">(${fmt(t.fim)})</span></li>`).join('')}</ul>`:''}
+      ${s.altos.length?`<h3 style="margin-top:16px">⚠️ Riscos altos</h3><ul class="clean">${s.altos.map(r=>`<li>${esc(r.descricao)}</li>`).join('')}</ul>`:''}
+      ${p.dicas.length?`<h3 style="margin-top:16px">💡 Dicas para economizar</h3><ul class="clean">${p.dicas.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}</div>
+  </div>`;
+}
+
+const COLS = [['todo','A fazer'],['doing','Em andamento'],['done','Concluído']];
+function vKanban(p){
+  return `<div class="row noprint" style="margin-bottom:12px"><span class="muted small">Arraste os cartões entre as colunas ou use as setas. Clique para editar.</span><span class="spacer"></span><button class="primary" onclick="editTask()">+ Tarefa</button></div>
+  <div class="kanban">${COLS.map(([k,l])=>{ const ts=p.tarefas.filter(t=>t.status===k); return `
+    <div class="col" data-col="${k}"><h3>${l}<span class="pill p-pri">${ts.length}</span></h3>
+    ${ts.map(t=>`<div class="task ${isLate(t)?'late':''}" draggable="true" data-id="${t.id}">
+      <b onclick="editTask('${t.id}')">${esc(t.titulo)}</b>
+      <div class="meta"><span>👤 ${esc(t.responsavel)}</span><span>📅 ${fmt(t.fim)}</span>${t.custo?`<span>💰 ${brl(t.custo)}</span>`:''}${isLate(t)?'<span class="pill p-bad">atrasada</span>':''}</div>
+      <div class="mv noprint">${k!=='todo'?`<button onclick="moveTask('${t.id}',-1)">◀</button>`:''}${k!=='done'?`<button onclick="moveTask('${t.id}',1)">▶</button>`:''}</div>
+    </div>`).join('')}</div>`}).join('')}</div>`;
+}
+function bindKanban(){
+  document.querySelectorAll('.task').forEach(el=>el.addEventListener('dragstart',e=>e.dataTransfer.setData('text',el.dataset.id)));
+  document.querySelectorAll('.col').forEach(c=>{
+    c.addEventListener('dragover',e=>{e.preventDefault();c.classList.add('over')});
+    c.addEventListener('dragleave',()=>c.classList.remove('over'));
+    c.addEventListener('drop',e=>{e.preventDefault(); const t=cur.tarefas.find(x=>x.id===e.dataTransfer.getData('text')); if(t){t.status=c.dataset.col; save(); renderProj();}});
+  });
+}
+function moveTask(id,d){ const t=cur.tarefas.find(x=>x.id===id); const i=COLS.findIndex(c=>c[0]===t.status); t.status=COLS[Math.min(2,Math.max(0,i+d))][0]; save(); renderProj(); }
+function editTask(id){
+  const t = id ? cur.tarefas.find(x=>x.id===id) : {titulo:'',responsavel:cur.equipe[0],inicio:today(),fim:today(),custo:0,status:'todo',fase:'Execução'};
+  modal(`<h2>${id?'Editar':'Nova'} tarefa</h2>
+    <label>Tarefa</label><input id="t_tit" value="${esc(t.titulo)}">
+    <div class="grid g2"><div><label>Responsável</label><input id="t_resp" value="${esc(t.responsavel)}" list="eqlist"><datalist id="eqlist">${cur.equipe.map(e=>`<option value="${esc(e)}">`).join('')}</datalist></div>
+    <div><label>Fase</label><select id="t_fase">${['Planejamento','Preparação','Execução','Encerramento'].map(f=>`<option ${t.fase===f?'selected':''}>${f}</option>`).join('')}</select></div>
+    <div><label>Início</label><input type="date" id="t_ini" value="${t.inicio}"></div><div><label>Fim</label><input type="date" id="t_fim" value="${t.fim}"></div>
+    <div><label>Custo (R$)</label><input type="number" id="t_custo" value="${t.custo}"></div>
+    <div><label>Status</label><select id="t_st">${COLS.map(([k,l])=>`<option value="${k}" ${t.status===k?'selected':''}>${l}</option>`).join('')}</select></div></div>
+    <div class="row" style="margin-top:16px">${id?`<button class="ghost danger" onclick="delTask('${id}')">Excluir</button>`:''}<span class="spacer"></span><button onclick="closeModal()">Cancelar</button><button class="primary" onclick="saveTask('${id||''}')">Salvar</button></div>`);
+}
+function saveTask(id){
+  const v = {titulo:$('#t_tit').value.trim(), responsavel:$('#t_resp').value.trim(), fase:$('#t_fase').value, inicio:$('#t_ini').value, fim:$('#t_fim').value, custo:+$('#t_custo').value||0, status:$('#t_st').value};
+  if(!v.titulo){ toast('Dê um nome à tarefa'); return; }
+  if(id) Object.assign(cur.tarefas.find(x=>x.id===id), v); else cur.tarefas.push({id:uid(), ...v});
+  save(); closeModal(); renderProj();
+}
+function delTask(id){ cur.tarefas = cur.tarefas.filter(t=>t.id!==id); save(); closeModal(); renderProj(); }
+
+function vGantt(p){
+  const ts = [...p.tarefas].sort((a,b)=>a.inicio.localeCompare(b.inicio));
+  if(!ts.length) return '<div class="card muted">Sem tarefas.</div>';
+  const a = [p.inicio, ...ts.map(t=>t.inicio)].sort()[0], b = [p.prazo, ...ts.map(t=>t.fim)].sort().pop();
+  const total = Math.max(1, diff(a,b)+1), pos = d => diff(a,d)/total*100;
+  const ticks = []; for(let i=0;i<=total;i+=Math.max(1,Math.ceil(total/8))) ticks.push(addDays(a,i));
+  const td = today(), showToday = td>=a && td<=b;
+  return `<div class="card gantt">
+    <div class="gr"><div></div><div class="gh">${ticks.map(d=>`<span style="left:${pos(d)}%">${fmt(d).slice(0,5)}</span>`).join('')}</div></div>
+    ${ts.map(t=>`<div class="gr"><div class="n" title="${esc(t.titulo)}">${esc(t.titulo)}</div><div class="t">
+      ${showToday?`<div class="today" style="left:${pos(td)}%"></div>`:''}
+      <div class="gb ${t.status==='done'?'done':isLate(t)?'late':''}" style="left:${pos(t.inicio)}%;width:${Math.max(1.2,(diff(t.inicio,t.fim)+1)/total*100)}%" title="${fmt(t.inicio)} a ${fmt(t.fim)}"></div></div></div>`).join('')}
+    <div class="row small muted" style="margin-top:10px"><span class="pill" style="background:var(--plan);color:var(--card)">planejada</span><span class="pill p-ok">concluída</span><span class="pill p-bad">atrasada</span><span>| linha amarela = hoje</span></div>
+  </div>`;
+}
+
+function vRiscos(p){
+  const cell = (pr,im) => { const rs=p.riscos.filter(r=>r.prob===pr&&r.impacto===im); const l=lvl({prob:pr,impacto:im}); return `<div class="mc lv${l}">${rs.map(r=>`<div class="rk">${esc(r.descricao)}</div>`).join('')}</div>`; };
+  return `<div class="grid g2">
+  <div class="card"><h3>Matriz de riscos (chance × impacto)</h3>
+    <div class="matrix">
+      ${[3,2,1].map(pr=>`<div class="mh">Chance<br>${lvlName[pr]}</div>${[1,2,3].map(im=>cell(pr,im)).join('')}`).join('')}
+      <div></div>${[1,2,3].map(im=>`<div class="mh">Impacto ${impName[im].toLowerCase()}</div>`).join('')}
+    </div></div>
+  <div class="card"><div class="row"><h3>Plano de resposta</h3><span class="spacer"></span><button class="noprint" onclick="addRisk()">+ Risco</button></div>
+    <table><tr><th>Risco</th><th>Nível</th><th>O que fazer</th></tr>
+    ${[...p.riscos].sort((a,b)=>b.prob*b.impacto-a.prob*a.impacto).map(r=>`<tr><td>${esc(r.descricao)}<div class="small muted">chance ${lvlName[r.prob].toLowerCase()} · impacto ${impName[r.impacto].toLowerCase()}</div></td>
+      <td><span class="pill ${['','p-ok','p-warn','p-bad'][lvl(r)]}">${lvlName[lvl(r)]}</span></td><td>${esc(r.resposta)}</td></tr>`).join('')}</table></div></div>`;
+}
+function addRisk(){
+  modal(`<h2>Novo risco</h2><label>O que pode dar errado?</label><input id="r_d">
+  <div class="grid g2"><div><label>Chance</label><select id="r_p"><option value="1">Baixa</option><option value="2">Média</option><option value="3">Alta</option></select></div>
+  <div><label>Impacto</label><select id="r_i"><option value="1">Baixo</option><option value="2">Médio</option><option value="3">Alto</option></select></div></div>
+  <label>O que fazer para evitar</label><input id="r_r">
+  <div class="row" style="margin-top:16px"><span class="spacer"></span><button onclick="closeModal()">Cancelar</button><button class="primary" onclick="saveRisk()">Salvar</button></div>`);
+}
+function saveRisk(){ const d=$('#r_d').value.trim(); if(!d) return; cur.riscos.push({id:uid(),descricao:d,prob:+$('#r_p').value,impacto:+$('#r_i').value,resposta:$('#r_r').value,responsavel:cur.equipe[0]}); save(); closeModal(); renderProj(); }
+
+function vCustos(p,s){
+  const fases = {}; p.tarefas.forEach(t=>fases[t.fase]=(fases[t.fase]||0)+(+t.custo||0));
+  const max = Math.max(1,...Object.values(fases));
+  return `<div class="grid g3">
+    <div class="card kpi"><div class="l">Orçamento</div><div class="v">${brl(p.orcamento)}</div></div>
+    <div class="card kpi"><div class="l">Previsto nas tarefas</div><div class="v">${brl(s.custo)}</div><div class="bar" style="margin-top:6px"><i style="width:${Math.min(100,s.custo/Math.max(1,p.orcamento)*100)}%;background:${s.custo>p.orcamento?'var(--bad)':'var(--pri)'}"></i></div></div>
+    <div class="card kpi"><div class="l">Já realizado (tarefas concluídas)</div><div class="v">${brl(s.gasto)}</div></div>
+  </div>
+  <div class="grid g2" style="margin-top:14px">
+    <div class="card"><h3>Custo por fase</h3>${Object.entries(fases).map(([f,v])=>`<div style="margin-bottom:10px"><div class="row small"><span>${esc(f)}</span><span class="spacer"></span><b>${brl(v)}</b></div><div class="bar"><i style="width:${v/max*100}%"></i></div></div>`).join('')}</div>
+    <div class="card"><h3>Custos por tarefa</h3><table><tr><th>Tarefa</th><th class="num">Custo</th></tr>
+      ${p.tarefas.filter(t=>+t.custo).map(t=>`<tr><td>${esc(t.titulo)}</td><td class="num">${brl(t.custo)}</td></tr>`).join('')}
+      <tr><td><b>Reserva para imprevistos</b></td><td class="num"><b>${brl(p.orcamento-s.custo)}</b></td></tr></table></div>
+  </div>`;
+}
+
+const SUGS = ['O que está atrasado e o que priorizo?','Como reduzir os custos?','Quais riscos merecem mais atenção?','O que devo conversar com o técnico/agrônomo?'];
+function vChat(p){
+  return `<div class="card">
+    <h3>Assistente IA do projeto</h3><div class="muted small" style="margin-bottom:10px">Pergunte sobre o andamento. O assistente conhece todas as tarefas, prazos, custos e riscos deste projeto.</div>
+    <div class="chat" id="chatBox">${p.chat.length?p.chat.map(m=>`<div class="msg ${m.r}">${esc(m.t)}</div>`).join(''):'<div class="muted small">Nenhuma conversa ainda.</div>'}</div>
+    <div class="row sugs noprint" style="margin:12px 0">${SUGS.map(s=>`<button onclick="ask(this.textContent)">${s}</button>`).join('')}</div>
+    <div class="row noprint"><input id="q" placeholder="Digite sua pergunta…" onkeydown="if(event.key==='Enter')ask($('#q').value)"><button class="primary" onclick="ask($('#q').value)">Enviar</button></div>
+    <div class="small muted" style="margin-top:8px">🔒 Não digite dados pessoais. A IA pode errar: confira preços e prazos.</div></div>`;
+}
+async function ask(q){
+  q=(q||'').trim(); if(!q) return; const p=cur;
+  p.chat.push({r:'u',t:q}); save(); renderProj(); loading(true,'Pensando…');
+  let a;
+  try{
+    if(!cfg.key) throw new Error('demo');
+    const ctx = {empresa:p.empresa,projeto:p.nome,objetivo:p.objetivo,inicio:p.inicio,prazo:p.prazo,hoje:today(),orcamento:p.orcamento,
+      tarefas:p.tarefas.map(({titulo,responsavel,inicio,fim,custo,status})=>({titulo,responsavel,inicio,fim,custo,status})),riscos:p.riscos.map(({descricao,prob,impacto,resposta})=>({descricao,prob,impacto,resposta}))};
+    const hist = p.chat.slice(-8).map(m=>(m.r==='u'?'Dono: ':'Assistente: ')+m.t).join('\n');
+    a = await gemini(`${SYS}\nVocê é o assistente deste projeto. Dados atuais (JSON): ${JSON.stringify(ctx)}\nConversa:\n${hist}\nResponda à última pergunta do dono de forma curta e prática (até 150 palavras), sem markdown.`, false);
+  }catch(e){ a = demoAnswer(q,p) + (e.message==='demo'?'':'\n\n(IA indisponível: '+e.message.slice(0,60)+')'); }
+  loading(false); p.chat.push({r:'a',t:a.trim()}); save(); renderProj();
+}
+function demoAnswer(q,p){
+  const s=stats(p); q=q.toLowerCase();
+  if(/atras|priori/.test(q)){ const prox=p.tarefas.filter(t=>t.status!=='done').sort((a,b)=>a.fim.localeCompare(b.fim)).slice(0,3);
+    return (s.late.length?`Você tem ${s.late.length} tarefa(s) atrasada(s): ${s.late.map(t=>t.titulo).join('; ')}.`:'Nenhuma tarefa atrasada. 👏')+`\nPrioridades agora: ${prox.map(t=>`${t.titulo} (até ${fmt(t.fim)})`).join('; ')}.`; }
+  if(/cust|econom|gast|or[cç]ament/.test(q)){ const top=[...p.tarefas].sort((a,b)=>b.custo-a.custo).slice(0,2);
+    return `Custo previsto: ${brl(s.custo)} de ${brl(p.orcamento)}. Os maiores gastos são ${top.map(t=>`${t.titulo} (${brl(t.custo)})`).join(' e ')}. Peça 3 orçamentos para esses itens e negocie pagamento à vista.`; }
+  if(/risco/.test(q)){ const r=[...p.riscos].sort((a,b)=>b.prob*b.impacto-a.prob*a.impacto)[0]; return r?`O risco que mais merece atenção é "${r.descricao}". Ação recomendada: ${r.resposta}.`:'Nenhum risco cadastrado.'; }
+  if(/técnico|tecnico|agrônomo|agronomo/.test(q)) return `Leve para o técnico/agrônomo: 1) o objetivo "${p.nome}" e a área${p.area?` (${p.area} ha)`:''}; 2) a análise de solo ou dados de produção; 3) a lista de insumos e o orçamento de ${brl(p.orcamento)}; 4) os riscos principais: ${p.riscos.slice(0,2).map(r=>r.descricao).join(' e ')}. Peça a recomendação por escrito.`;
+  if(/whats|divulg|mensagem/.test(q)) return `Olá! 👋 A ${p.empresa} está preparando algo especial: ${p.nome}! Será no dia ${fmt(p.prazo)}. Responda esta mensagem para garantir sua participação e receber uma condição exclusiva. Esperamos você!`;
+  return `O projeto está ${s.pct}% concluído, faltam ${s.dias} dias para o prazo e há ${s.late.length} tarefa(s) atrasada(s). `;
+}
+
+
+// ================== AVALIAÇÃO ANTES / DEPOIS ==================
+const LSE = 'gpia.eval';
+let evals = [];
+let evalMode = 'antes';
+const saveE = () => persist('avaliacoes', evals, savedE, LSE);
+const radio = (name, opts) => `<div class="opts">${opts.map(o=>`<label><input type="radio" name="${name}" value="${esc(o)}"><span>${esc(o)}</span></label>`).join('')}</div>`;
+const scale = name => `<div class="scale">${[1,2,3,4,5].map(n=>`<label><input type="radio" name="${name}" value="${n}"><span>${n}</span></label>`).join('')}</div><div class="small muted" style="margin-top:4px">1 = nada · 5 = muito</div>`;
+const val = n => (document.querySelector(`input[name="${n}"]:checked`)||{}).value;
+function renderEval(){
+  const a = evals.filter(e=>e.fase==='antes'), d = evals.filter(e=>e.fase==='depois');
+  const nextCode = 'P' + (new Set(a.map(e=>e.cod)).size + 1);
+  const form = evalMode==='antes' ? `
+    <div class="q"><b>Código do participante</b><input id="e_cod" value="${nextCode}" style="max-width:160px"><div class="small muted" style="margin-top:4px">Use o mesmo código no questionário de depois. Não use nome.</div></div>
+    <div class="q"><b>Autorizo o uso anônimo das minhas respostas no relatório acadêmico do projeto de extensão (UNESC).</b>${radio('e_ok',['Sim','Não'])}</div>
+    <div class="q"><b>Atividade principal</b>${radio('e_at',['Café','Pimenta-do-reino','Ovos/aves','Leite','Hortaliças','Atendimento ao cooperado','Outra'])}</div>
+    <div class="q"><b>Faixa de idade</b>${radio('e_id',['até 29','30–44','45–59','60 ou mais'])}</div>
+    <div class="q"><b>Já usou alguma ferramenta de Inteligência Artificial (ChatGPT, Gemini…)?</b>${radio('e_ia',['Nunca','Poucas vezes','Com frequência'])}</div>
+    <div class="q"><b>Como organiza hoje os projetos da propriedade (colheita, reforma, plantio)?</b>${radio('e_org',['Não organizo, vou fazendo','De cabeça','Caderno/papel','Planilha ou aplicativo'])}</div>
+    <div class="q"><b>Quanto se sente capaz de planejar um projeto com tarefas, prazos e custos?</b>${scale('e_cp')}</div>
+    <div class="q"><b>Quanto se sente seguro para usar Inteligência Artificial?</b>${scale('e_ci')}</div>` : `
+    <div class="q"><b>Código do participante</b><select id="e_cod" style="max-width:160px">${[...new Set(a.map(e=>e.cod))].map(c=>`<option>${esc(c)}</option>`).join('')||'<option>P1</option>'}</select></div>
+    <div class="q"><b>Agora, quanto se sente capaz de planejar um projeto com tarefas, prazos e custos?</b>${scale('e_cp')}</div>
+    <div class="q"><b>Agora, quanto se sente seguro para usar Inteligência Artificial?</b>${scale('e_ci')}</div>
+    <div class="q"><b>Quanto o sistema ajudou a organizar o seu projeto?</b>${scale('e_aj')}</div>
+    <div class="q"><b>Pretende usar de novo?</b>${radio('e_nov',['Sim','Talvez','Não'])}</div>
+    <div class="q"><b>Que tipo de dado NÃO se deve colocar numa IA?</b><input id="e_seg" placeholder="Resposta livre"></div>
+    <div class="q"><b>O que foi mais útil? Comentário ou sugestão</b><textarea id="e_com" style="min-height:70px"></textarea></div>`;
+  $('#app').innerHTML = `
+  <div class="row"><div><h2>Avaliação da ação</h2><div class="muted">Questionário rápido antes e depois do uso do sistema. Os resultados alimentam o relatório.</div></div></div>
+  <div class="grid g2" style="margin-top:16px;align-items:start">
+    <div class="card"><div class="row"><div class="seg"><button class="${evalMode==='antes'?'on':''}" onclick="evalMode='antes';renderEval()">Antes</button><button class="${evalMode==='depois'?'on':''}" onclick="evalMode='depois';renderEval()">Depois</button></div><span class="spacer"></span><span class="small muted">${a.length} antes · ${d.length} depois</span></div>
+      ${form}
+      <div class="row" style="margin-top:14px"><span class="spacer"></span><button class="primary" onclick="saveEval()">Salvar respostas</button></div></div>
+    <div>${evalResults(a,d)}</div>
+  </div>`;
+}
+function saveEval(){
+  const e = {id:uid(), fase:evalMode, cod:$('#e_cod').value.trim()||'P?', em:new Date().toISOString(), cp:+val('e_cp')||null, ci:+val('e_ci')||null};
+  if(evalMode==='antes'){ Object.assign(e,{ok:val('e_ok'),at:val('e_at'),id_:val('e_id'),ia:val('e_ia'),org:val('e_org')});
+    if(e.ok!=='Sim'){ toast('É preciso autorizar o uso anônimo das respostas'); return; } }
+  else Object.assign(e,{aj:+val('e_aj')||null,nov:val('e_nov'),seg:$('#e_seg').value.trim(),com:$('#e_com').value.trim()});
+  if(!e.cp||!e.ci){ toast('Responda as perguntas de 1 a 5'); return; }
+  evals.push(e); saveE(); toast('Respostas salvas'); renderEval();
+}
+const avg = (arr,k) => { const v=arr.map(x=>x[k]).filter(x=>x); return v.length ? v.reduce((s,x)=>s+x,0)/v.length : 0; };
+const pctOf = (arr,k,v) => arr.length ? Math.round(arr.filter(x=>x[k]===v).length/arr.length*100) : 0;
+const f1 = n => n.toFixed(1).replace('.',',');
+function evalResults(a,d){
+  if(!a.length && !d.length) return `<div class="card"><h3>Resultados</h3><div class="muted">Os resultados aparecem aqui assim que as primeiras respostas forem salvas: número de participantes, quem nunca usou IA e a comparação de confiança antes e depois.</div></div>`;
+  const row = (l,x,y) => `<div class="small muted" style="margin-top:12px">${l}</div>
+    <div class="cmp"><span>Antes</span><div class="bar b"><i style="width:${x/5*100}%"></i></div><b>${f1(x)}</b></div>
+    <div class="cmp"><span>Depois</span><div class="bar"><i style="width:${y/5*100}%"></i></div><b>${f1(y)}</b></div>`;
+  return `<div class="grid g3">
+    <div class="card kpi"><div class="l">Participantes</div><div class="v">${new Set(a.map(e=>e.cod)).size}</div></div>
+    <div class="card kpi"><div class="l">Nunca usaram IA</div><div class="v">${pctOf(a,'ia','Nunca')}%</div></div>
+    <div class="card kpi"><div class="l">Usariam de novo</div><div class="v">${pctOf(d,'nov','Sim')}%</div></div></div>
+  <div class="card" style="margin-top:14px"><h3>Confiança média (escala 1 a 5)</h3>
+    ${row('Capacidade de planejar um projeto', avg(a,'cp'), avg(d,'cp'))}
+    ${row('Segurança para usar IA', avg(a,'ci'), avg(d,'ci'))}
+    ${d.length?`<div class="small muted" style="margin-top:12px">O sistema ajudou: <b>${f1(avg(d,'aj'))}</b> de 5 · Organizavam "de cabeça" ou sem organizar: <b>${a.length?Math.round(a.filter(x=>/cabeça|Não organizo/.test(x.org||'')).length/a.length*100):0}%</b></div>`:''}</div>
+  ${d.filter(x=>x.com).length?`<div class="card" style="margin-top:14px"><h3>O que os participantes disseram</h3>${d.filter(x=>x.com).map(x=>`<p style="margin:6px 0">“${esc(x.com)}” <span class="small muted">(${esc(x.cod)})</span></p>`).join('')}</div>`:''}
+  <div class="row noprint" style="margin-top:12px"><button onclick="exportEval()">⬇ Exportar respostas (CSV)</button><button class="ghost danger" onclick="clearEval()">Apagar respostas</button></div>`;
+}
+function exportEval(){
+  const k=['fase','cod','em','ok','at','id_','ia','org','cp','ci','aj','nov','seg','com'];
+  download('avaliacao_extensao.csv','﻿'+[k.join(';')].concat(evals.map(e=>k.map(x=>`"${String(e[x]??'').replace(/"/g,'""')}"`).join(';'))).join('\n'),'text/csv');
+}
+function clearEval(){ modal(`<h2>Apagar todas as respostas?</h2><div class="muted">Exporte o CSV antes, se precisar dos dados.</div><div class="row" style="margin-top:16px"><span class="spacer"></span><button onclick="closeModal()">Cancelar</button><button class="primary" onclick="evals=[];saveE();closeModal();renderEval()">Apagar</button></div>`); }
+
+function loadSamples(){
+  const mk = (f, done, doing) => { const pl=demoPlan(f); pl.tarefas.slice(0,done).forEach(t=>t.status='done'); pl.tarefas.slice(done,done+doing).forEach(t=>t.status='doing');
+    return {id:uid(),...f,criadoEm:new Date().toISOString(),modo:'demo',...pl,chat:[]}; };
+  const t = today();
+  projects.unshift(
+    mk({empresa:'Sítio Boa Vista (exemplo)',ramo:'Café conilon',area:'1',municipio:'Colatina',nome:'Renovação de 1 hectare de café conilon',descricao:'Lavoura velha produzindo pouco; plantar clones mais produtivos',inicio:t,prazo:addDays(t,120),orcamento:25000,equipe:['João','Maria']},3,1),
+    mk({empresa:'Granja Santa Rita (exemplo)',ramo:'Avicultura de postura (ovos)',area:'',municipio:'Santa Maria de Jetibá',nome:'Ampliação do aviário',descricao:'Aumentar o lote de galinhas de postura',inicio:t,prazo:addDays(t,75),orcamento:40000,equipe:['Carlos','Lúcia']},2,2),
+    mk({empresa:'Sítio Recanto (exemplo)',ramo:'Café conilon',area:'3',municipio:'São Gabriel da Palha',nome:'Instalação de irrigação por gotejo',descricao:'Irrigar 3 ha de conilon por causa das secas',inicio:t,prazo:addDays(t,60),orcamento:45000,equipe:['Antônio']},1,1));
+  save(); renderHome(); toast('3 projetos de exemplo carregados');
+}
+
+
+// ================== DEMONSTRAÇÃO AUTOMÁTICA ==================
+let demoRunning = false;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function cap(html){ const c=$('#caption'); if(!html){ c.classList.remove('on'); return; } c.innerHTML=html; c.classList.add('on'); }
+async function typeInto(sel, text, speed=28){
+  const el=$(sel); if(!el) return; el.classList.add('demo-hl'); el.scrollIntoView({block:'center',behavior:'smooth'}); el.value='';
+  for(const ch of text){ el.value+=ch; await sleep(speed); } await sleep(250); el.classList.remove('demo-hl');
+}
+async function showTab(k, html, ms=4200){ tab=k; renderProj(); window.scrollTo({top:0,behavior:'smooth'}); cap(html); await sleep(ms); }
+async function autoDemo(){
+  if(demoRunning) return; demoRunning=true;
+  try{
+    if(!$('#f_empresa')) go('new');
+    cap('<b>Passo 1.</b> O produtor informa a propriedade, a cultura, a área e o município.'); await sleep(1200);
+    await typeInto('#f_empresa','Sítio Santa Luzia');
+    $('#f_ramo').value='Café conilon'; $('#f_ramo').classList.add('demo-hl'); await sleep(600); $('#f_ramo').classList.remove('demo-hl');
+    await typeInto('#f_area','2'); await typeInto('#f_mun','Colatina');
+    cap('<b>Passo 2.</b> Escolhe o tipo de projeto e conta o problema com as próprias palavras.'); await sleep(900);
+    await typeInto('#f_nome','Preparação da colheita');
+    await typeInto('#f_desc','Quero organizar a colheita de 2 hectares de conilon. Ano passado faltou gente para colher e o café ficou muito tempo no pé.', 18);
+    cap('<b>Passo 3.</b> Define prazo, orçamento e quem vai trabalhar.'); await sleep(700);
+    $('#f_ini').value=today(); $('#f_fim').value=addDays(today(),210);
+    await typeInto('#f_orc','30000'); await typeInto('#f_eq','José, Ana, Pedro (diarista)');
+    cap('<b>Passo 4.</b> Clica em <b>Gerar plano com IA</b>.'); await sleep(1500);
+    await createProject(); await sleep(400);
+    if(!cur) throw new Error('sem projeto');
+    cur.tarefas.slice(0,3).forEach(t=>t.status='done'); cur.tarefas.slice(3,5).forEach(t=>t.status='doing'); save();
+    await showTab('geral','<b>Painel.</b> Progresso, dias até o prazo, custo previsto x orçamento, riscos altos, objetivo, escopo e dicas. (Simulamos 3 tarefas já concluídas.)',6000);
+    await showTab('kanban','<b>Quadro de tarefas.</b> As tarefas da colheita com responsável, data e custo. O produtor arrasta os cartões conforme avança.',6000);
+    await showTab('gantt','<b>Cronograma.</b> Cada tarefa vira uma barra no calendário. Concluídas em verde, atrasadas em vermelho.',5000);
+    await showTab('riscos','<b>Riscos.</b> Clima e falta de mão de obra no topo da matriz, cada um com uma ação para evitar.',5500);
+    await showTab('custos','<b>Orçamento.</b> Custo por fase e por tarefa, com a reserva para imprevistos.',4500);
+    await showTab('chat','<b>Assistente IA.</b> O produtor pergunta sobre o próprio projeto…',1800);
+    await ask('O que está atrasado e o que priorizo?'); await sleep(2600);
+    await ask('O que devo conversar com o técnico/agrônomo?'); cap('<b>Assistente IA.</b> As respostas usam os dados do projeto: tarefas, prazos, custos e riscos.'); await sleep(5000);
+    cap('<b>Pronto!</b> Em poucos minutos o produtor sai com um plano completo. Explore as abas à vontade.'); await sleep(4500);
+  }catch(e){ toast('Demonstração interrompida'); }
+  cap(''); demoRunning=false;
+}
+
+// ================== CONFIG / EXPORT ==================
+function openCfg(){
+  modal(`<h2>Configurar IA</h2>
+  <div class="muted small">O sistema usa o Google Gemini (gratuito). Crie uma chave em <b>aistudio.google.com/apikey</b> (entre com uma conta Google, clique em "Create API key" e copie).</div>
+  <label>Chave da API do Gemini</label><input id="c_key" type="password" value="${esc(cfg.key)}" placeholder="AIza…">
+  <label>Modelo</label><input id="c_model" value="${esc(cfg.model)}">
+  <div class="small muted" style="margin-top:8px">A chave fica salva somente neste navegador. Sem chave, o sistema cria os planos a partir dos modelos padrão de cada atividade.</div>
+  <div class="row" style="margin-top:16px"><button onclick="testCfg()">Testar</button><span class="spacer"></span><button onclick="closeModal()">Fechar</button><button class="primary" onclick="saveCfg()">Salvar</button></div>`);
+}
+function saveCfg(){ cfg={key:$('#c_key').value.trim(), model:$('#c_model').value.trim()||'gemini-flash-latest'}; store.set(LSCFG,cfg); aiState = cfg.key?'on':'off'; closeModal(); toast('Configuração salva'); cur?renderProj():renderHome(); }
+async function testCfg(){ const old=cfg; cfg={key:$('#c_key').value.trim(), model:$('#c_model').value.trim()}; loading(true,'Testando conexão…');
+  try{ const r=await gemini('Responda apenas: OK',false); toast('Conectado! Resposta: '+r.slice(0,20)); }catch(e){ toast('Erro: '+e.message.slice(0,90)); } loading(false); cfg=old; }
+function download(name, txt, type){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([txt],{type:type||'text/plain'})); a.download=name; document.body.appendChild(a); a.click(); a.remove(); }
+function exportJson(){ download(`${cur.nome}.json`, JSON.stringify(cur,null,2), 'application/json'); }
+function exportCsv(){
+  const rows=[['Fase','Tarefa','Responsável','Início','Fim','Custo','Status']].concat(cur.tarefas.map(t=>[t.fase,t.titulo,t.responsavel,fmt(t.inicio),fmt(t.fim),String(t.custo).replace('.',','),COLS.find(c=>c[0]===t.status)[1]]));
+  rows.push([]); rows.push(['Risco','Chance','Impacto','Nível','O que fazer']); cur.riscos.forEach(r=>rows.push([r.descricao,lvlName[r.prob],impName[r.impacto],lvlName[lvl(r)],r.resposta]));
+  download(`${cur.nome}.csv`, '﻿'+rows.map(r=>r.map(c=>`"${String(c??'').replace(/"/g,'""')}"`).join(';')).join('\n'), 'text/csv');
+}
+function importJson(){ const i=document.createElement('input'); i.type='file'; i.accept='.json'; i.onchange=async()=>{ try{ const p=JSON.parse(await i.files[0].text()); p.id=uid(); projects.unshift(p); save(); go('proj',p.id); }catch(e){ toast('Arquivo inválido'); } }; i.click(); }
+function delProj(){ modal(`<h2>Excluir projeto?</h2><div class="muted">O projeto será removido para toda a equipe. Esta ação não pode ser desfeita.</div><div class="row" style="margin-top:16px"><span class="spacer"></span><button onclick="closeModal()">Cancelar</button><button class="primary" onclick="projects=projects.filter(p=>p.id!==cur.id);save();closeModal();go('home')">Excluir</button></div>`); }
+
+renderHome();
+
+// ================== NUVEM: banco de dados gratuito (Supabase) ==================
+const SUPABASE_URL = 'https://ymjkqsslrktisnmaoisl.supabase.co';
+const SUPABASE_KEY = '__SB_KEY__';
+const TABELA = 'registros';
+function persist(col, arr, mem, lsKey){
+  store.set(lsKey, arr);
+  if(!DB) return;
+  const ids = new Set(arr.map(x=>x.id));
+  for(const x of arr){
+    if(x.chat && x.chat.length>40) x.chat = x.chat.slice(-40);
+    const j = JSON.stringify(x);
+    if(mem[x.id] !== j){ mem[x.id] = j; const body = JSON.parse(j); const id = x.id;
+      chain = chain.then(async()=>{ const r = await DB.from(TABELA).upsert({col, id, data: body, atualizado_em: new Date().toISOString()}); if(r.error) throw r.error; })
+        .catch(()=>toast('Não foi possível salvar. Verifique a conexão.')); }
+  }
+  for(const id of Object.keys(mem)) if(!ids.has(id)){ delete mem[id];
+    chain = chain.then(async()=>{ const r = await DB.from(TABELA).delete().eq('col', col).eq('id', id); if(r.error) throw r.error; })
+      .catch(()=>toast('Não foi possível excluir')); }
+}
+function refreshView(){
+  if($('#modal').classList.contains('on') || $('#loading').classList.contains('on')) return;
+  const a = document.activeElement; if(a && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) return;
+  if(curView==='proj' && cur) renderProj(); else if(curView==='eval') renderEval(); else if(curView==='home') renderHome();
+}
+async function carregar(col){
+  const r = await DB.from(TABELA).select('id,data').eq('col', col);
+  if(r.error) throw r.error;
+  return r.data.map(x=>x.data);
+}
+function aplicar(col, list){
+  if(col==='projetos'){
+    projects = list.sort((a,b)=>String(b.criadoEm||'').localeCompare(String(a.criadoEm||'')));
+    for(const k of Object.keys(savedP)) delete savedP[k]; projects.forEach(p=>savedP[p.id]=JSON.stringify(p));
+    if(cur) cur = projects.find(p=>p.id===cur.id) || null;
+    loaded = true; store.set(LS, projects);
+  } else {
+    evals = list.sort((a,b)=>String(a.em||'').localeCompare(String(b.em||'')));
+    for(const k of Object.keys(savedE)) delete savedE[k]; evals.forEach(e=>savedE[e.id]=JSON.stringify(e));
+    store.set(LSE, evals);
+  }
+}
+const pend = {};
+function recarregar(col){
+  clearTimeout(pend[col]);
+  pend[col] = setTimeout(async()=>{ try{ await chain; aplicar(col, await carregar(col)); refreshView(); }catch(e){} }, 400);
+}
+(async function init(){
+  if(!window.supabase || !/^https:/.test(SUPABASE_URL) || SUPABASE_KEY.length<20){ dbChecked=true; projects=store.get(LS,[]); evals=store.get(LSE,[]); renderHome(); return; }
+  DB = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  try{
+    const [p, e] = await Promise.all([carregar('projetos'), carregar('avaliacoes')]);
+    aplicar('projetos', p); aplicar('avaliacoes', e);
+  }catch(err){
+    DB = null; toast('Sem conexão com o banco de dados. Usando os dados deste navegador.');
+    projects=store.get(LS,[]); evals=store.get(LSE,[]);
+  }
+  dbChecked = true; refreshView();
+  if(DB){
+    DB.channel('mudancas').on('postgres_changes', {event:'*', schema:'public', table:TABELA}, ev=>{
+      const col = (ev.new && ev.new.col) || (ev.old && ev.old.col); if(col) recarregar(col); else { recarregar('projetos'); recarregar('avaliacoes'); }
+    }).subscribe();
+    setInterval(()=>{ if(!document.hidden){ recarregar('projetos'); recarregar('avaliacoes'); } }, 30000);
+  }
+})();
+</script>
+
+</body>
+</html>

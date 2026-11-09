@@ -122,6 +122,8 @@ ul.clean{margin:0;padding-left:18px}
 @media (max-width:760px){.kpis{grid-template-columns:1fr 1fr}.kpis .card{padding:14px}.kpis .fi{width:36px;height:36px;font-size:20px}.kpis .v{font-size:22px}}
 .nt .pill{white-space:nowrap}
 @media (max-width:640px){.hero{padding:18px}.hero-art{display:none}.hero-h{font-size:22px}}
+.chips{display:flex;flex-wrap:wrap;gap:6px}.chip{margin:0;display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--line);border-radius:99px;cursor:pointer;color:var(--ink);font-weight:500;font-size:14px}
+.chip input{width:auto;margin:0;accent-color:var(--pri)}.chip:has(input:checked){background:var(--pri2);border-color:var(--pri);color:var(--pri);font-weight:600}
 </style>
 </head>
 <body>
@@ -538,24 +540,59 @@ function bindKanban(){
   document.querySelectorAll('.col').forEach(c=>{
     c.addEventListener('dragover',e=>{e.preventDefault();c.classList.add('over')});
     c.addEventListener('dragleave',()=>c.classList.remove('over'));
-    c.addEventListener('drop',e=>{e.preventDefault(); const t=cur.tarefas.find(x=>x.id===e.dataTransfer.getData('text')); if(t){t.status=c.dataset.col; save(); renderProj();}});
+    c.addEventListener('drop',e=>{e.preventDefault(); const t=cur.tarefas.find(x=>x.id===e.dataTransfer.getData('text')); if(t) setStatus(t.id, c.dataset.col);});
   });
 }
-function moveTask(id,d){ const t=cur.tarefas.find(x=>x.id===id); const i=COLS.findIndex(c=>c[0]===t.status); t.status=COLS[Math.min(2,Math.max(0,i+d))][0]; save(); renderProj(); }
+function moveTask(id,d){ const t=cur.tarefas.find(x=>x.id===id); const i=COLS.findIndex(c=>c[0]===t.status); setStatus(id, COLS[Math.min(2,Math.max(0,i+d))][0]); }
+// ---- responsáveis ----
+function splitResp(s){ return String(s||'').split(/\s*[,;]\s*|\s+e\s+/).map(x=>x.trim()).filter(Boolean); }
+function respPicker(sel){
+  const all=[...new Set([...(cur.equipe||[]), ...sel])].filter(Boolean);
+  return `<div class="chips" id="rp">${all.map(n=>`<label class="chip"><input type="checkbox" value="${esc(n)}" ${sel.includes(n)?'checked':''}><span>${esc(n)}</span></label>`).join('')}</div>
+  <div class="row" style="margin-top:8px;flex-wrap:nowrap"><input id="rp_new" placeholder="Adicionar pessoa (ex.: Matheus)" onkeydown="if(event.key==='Enter'){event.preventDefault();addResp()}"><button type="button" onclick="addResp()" style="white-space:nowrap">+ Adicionar</button></div>`;
+}
+function addResp(){
+  const i=$('#rp_new'), n=i.value.trim(); if(!n) return;
+  const box=$('#rp'), ex=[...box.querySelectorAll('input')].find(x=>x.value.toLowerCase()===n.toLowerCase());
+  if(ex) ex.checked=true; else box.insertAdjacentHTML('beforeend', `<label class="chip"><input type="checkbox" value="${esc(n)}" checked><span>${esc(n)}</span></label>`);
+  i.value=''; i.focus();
+}
+function readResp(){ const v=[...document.querySelectorAll('#rp input:checked')].map(x=>x.value); const e=$('#rp_new'); const x=e&&e.value.trim(); if(x && !v.some(n=>n.toLowerCase()===x.toLowerCase())) v.push(x); return v; }
+function addToTeam(names){ cur.equipe=cur.equipe||[]; names.forEach(n=>{ if(!cur.equipe.some(e=>e.toLowerCase()===n.toLowerCase())) cur.equipe.push(n); }); }
+function setStatus(id, st){
+  const t=cur.tarefas.find(x=>x.id===id); if(!t || t.status===st) return;
+  if(t.status==='todo' && st==='doing') return askResp(id);
+  t.status=st; save(); renderProj();
+}
+function askResp(id){
+  const t=cur.tarefas.find(x=>x.id===id);
+  modal(`<h2>Quem vai fazer esta tarefa?</h2><div class="muted">${esc(t.titulo)}</div>
+  <label>Responsáveis</label>${respPicker(splitResp(t.responsavel))}
+  <div class="small muted" style="margin-top:8px">Marque uma ou mais pessoas. Quem você adicionar passa a fazer parte da equipe do projeto.</div>
+  <div class="row" style="margin-top:16px"><span class="spacer"></span><button onclick="closeModal()">Cancelar</button><button class="primary" onclick="confirmResp('${id}')">▶ Iniciar tarefa</button></div>`);
+}
+function confirmResp(id){
+  const names=readResp(); if(!names.length){ toast('Escolha pelo menos um responsável'); return; }
+  const t=cur.tarefas.find(x=>x.id===id); addToTeam(names);
+  t.responsavel=names.join(', '); t.status='doing'; t.iniciadaEm=today();
+  save(); closeModal(); renderProj(); toast('Tarefa iniciada: '+names.join(', '));
+}
 function editTask(id){
   const t = id ? cur.tarefas.find(x=>x.id===id) : {titulo:'',responsavel:cur.equipe[0],inicio:today(),fim:today(),custo:0,status:'todo',fase:'Execução'};
   modal(`<h2>${id?'Editar':'Nova'} tarefa</h2>
     <label>Tarefa</label><input id="t_tit" value="${esc(t.titulo)}">
-    <div class="grid g2"><div><label>Responsável</label><input id="t_resp" value="${esc(t.responsavel)}" list="eqlist"><datalist id="eqlist">${cur.equipe.map(e=>`<option value="${esc(e)}">`).join('')}</datalist></div>
-    <div><label>Fase</label><select id="t_fase">${['Planejamento','Preparação','Execução','Encerramento'].map(f=>`<option ${t.fase===f?'selected':''}>${f}</option>`).join('')}</select></div>
+    <label>Responsáveis</label>${respPicker(splitResp(t.responsavel))}
+    <div class="grid g2"><div><label>Fase</label><select id="t_fase">${['Planejamento','Preparação','Execução','Encerramento'].map(f=>`<option ${t.fase===f?'selected':''}>${f}</option>`).join('')}</select></div>
     <div><label>Início</label><input type="date" id="t_ini" value="${t.inicio}"></div><div><label>Fim</label><input type="date" id="t_fim" value="${t.fim}"></div>
     <div><label>Custo (R$)</label><input type="number" id="t_custo" value="${t.custo}"></div>
     <div><label>Status</label><select id="t_st">${COLS.map(([k,l])=>`<option value="${k}" ${t.status===k?'selected':''}>${l}</option>`).join('')}</select></div></div>
     <div class="row" style="margin-top:16px">${id?`<button class="ghost danger" onclick="delTask('${id}')">Excluir</button>`:''}<span class="spacer"></span><button onclick="closeModal()">Cancelar</button><button class="primary" onclick="saveTask('${id||''}')">Salvar</button></div>`);
 }
 function saveTask(id){
-  const v = {titulo:$('#t_tit').value.trim(), responsavel:$('#t_resp').value.trim(), fase:$('#t_fase').value, inicio:$('#t_ini').value, fim:$('#t_fim').value, custo:+$('#t_custo').value||0, status:$('#t_st').value};
+  const rs = readResp(); const v = {titulo:$('#t_tit').value.trim(), responsavel:rs.join(', '), fase:$('#t_fase').value, inicio:$('#t_ini').value, fim:$('#t_fim').value, custo:+$('#t_custo').value||0, status:$('#t_st').value};
   if(!v.titulo){ toast('Dê um nome à tarefa'); return; }
+  if(v.status!=='todo' && !rs.length){ toast('Escolha quem é o responsável pela tarefa'); return; }
+  addToTeam(rs);
   if(id) Object.assign(cur.tarefas.find(x=>x.id===id), v); else cur.tarefas.push({id:uid(), ...v});
   save(); closeModal(); renderProj();
 }

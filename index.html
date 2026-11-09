@@ -124,6 +124,7 @@ ul.clean{margin:0;padding-left:18px}
 @media (max-width:640px){.hero{padding:18px}.hero-art{display:none}.hero-h{font-size:22px}}
 .chips{display:flex;flex-wrap:wrap;gap:6px}.chip{margin:0;display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--line);border-radius:99px;cursor:pointer;color:var(--ink);font-weight:500;font-size:14px}
 .chip input{width:auto;margin:0;accent-color:var(--pri)}.chip:has(input:checked){background:var(--pri2);border-color:var(--pri);color:var(--pri);font-weight:600}
+.semresp{font-style:italic;opacity:.8}
 </style>
 </head>
 <body>
@@ -484,7 +485,7 @@ async function createProject(){
   loading(false);
   const p = { id:uid(), ...f, criadoEm:new Date().toISOString(), modo,
     objetivo:plan.objetivo||'', escopoInclui:plan.escopoInclui||[], escopoExclui:plan.escopoExclui||[],
-    tarefas:(plan.tarefas||[]).filter(t=>t&&t.titulo).map(t=>{ const ok=d=>/^\d{4}-\d{2}-\d{2}$/.test(d||''); const ini=ok(t.inicio)?t.inicio:f.inicio; return {id:uid(), status:'todo', ...t, fase:t.fase||'Execução', responsavel:t.responsavel||f.equipe[0], inicio:ini, fim:ok(t.fim)&&t.fim>=ini?t.fim:ini, custo:+t.custo||0}; }),
+    tarefas:(plan.tarefas||[]).filter(t=>t&&t.titulo).map(t=>{ const ok=d=>/^\d{4}-\d{2}-\d{2}$/.test(d||''); const ini=ok(t.inicio)?t.inicio:f.inicio; return {id:uid(), status:'todo', ...t, fase:t.fase||'Execução', responsavel:'', inicio:ini, fim:ok(t.fim)&&t.fim>=ini?t.fim:ini, custo:+t.custo||0}; }),
     riscos:(plan.riscos||[]).map(r=>({id:uid(), ...r, prob:Math.min(3,Math.max(1,+r.prob||1)), impacto:Math.min(3,Math.max(1,+r.impacto||1))})),
     proximos:plan.proximos||[], dicas:plan.dicas||[], chat:[] };
   projects.unshift(p); save(); go('proj', p.id); toast('Plano criado!');
@@ -531,7 +532,7 @@ function vKanban(p){
     <div class="col" data-col="${k}"><h3>${l}<span class="pill p-pri">${ts.length}</span></h3>
     ${ts.map(t=>`<div class="task ${isLate(t)?'late':''}" draggable="true" data-id="${t.id}">
       <b onclick="editTask('${t.id}')">${esc(t.titulo)}</b>
-      <div class="meta"><span>👤 ${esc(t.responsavel)}</span><span>📅 ${fmt(t.fim)}</span>${t.custo?`<span>💰 ${brl(t.custo)}</span>`:''}${isLate(t)?'<span class="pill p-bad">atrasada</span>':''}</div>
+      <div class="meta">${t.status!=='todo' && t.responsavel ? `<span>👤 ${esc(t.responsavel)}</span>` : `<span class="semresp">👤 sem responsável</span>`}<span>📅 ${fmt(t.fim)}</span>${t.custo?`<span>💰 ${brl(t.custo)}</span>`:''}${isLate(t)?'<span class="pill p-bad">atrasada</span>':''}</div>
       <div class="mv noprint">${k!=='todo'?`<button onclick="moveTask('${t.id}',-1)">◀</button>`:''}${k!=='done'?`<button onclick="moveTask('${t.id}',1)">▶</button>`:''}</div>
     </div>`).join('')}</div>`}).join('')}</div>`;
 }
@@ -562,12 +563,12 @@ function addToTeam(names){ cur.equipe=cur.equipe||[]; names.forEach(n=>{ if(!cur
 function setStatus(id, st){
   const t=cur.tarefas.find(x=>x.id===id); if(!t || t.status===st) return;
   if(t.status==='todo' && st==='doing') return askResp(id);
-  t.status=st; save(); renderProj();
+  t.status=st; if(st==='todo') t.responsavel=''; save(); renderProj();
 }
 function askResp(id){
   const t=cur.tarefas.find(x=>x.id===id);
   modal(`<h2>Quem vai fazer esta tarefa?</h2><div class="muted">${esc(t.titulo)}</div>
-  <label>Responsáveis</label>${respPicker(splitResp(t.responsavel))}
+  <label>Responsáveis</label>${respPicker(t.status==='todo' ? [] : splitResp(t.responsavel))}
   <div class="small muted" style="margin-top:8px">Marque uma ou mais pessoas. Quem você adicionar passa a fazer parte da equipe do projeto.</div>
   <div class="row" style="margin-top:16px"><span class="spacer"></span><button onclick="closeModal()">Cancelar</button><button class="primary" onclick="confirmResp('${id}')">▶ Iniciar tarefa</button></div>`);
 }
@@ -578,18 +579,19 @@ function confirmResp(id){
   save(); closeModal(); renderProj(); toast('Tarefa iniciada: '+names.join(', '));
 }
 function editTask(id){
-  const t = id ? cur.tarefas.find(x=>x.id===id) : {titulo:'',responsavel:cur.equipe[0],inicio:today(),fim:today(),custo:0,status:'todo',fase:'Execução'};
+  const t = id ? cur.tarefas.find(x=>x.id===id) : {titulo:'',responsavel:'',inicio:today(),fim:today(),custo:0,status:'todo',fase:'Execução'};
   modal(`<h2>${id?'Editar':'Nova'} tarefa</h2>
     <label>Tarefa</label><input id="t_tit" value="${esc(t.titulo)}">
-    <label>Responsáveis</label>${respPicker(splitResp(t.responsavel))}
+    <div id="rpbox" class="${t.status==='todo'?'hide':''}"><label>Responsáveis</label>${respPicker(t.status==='todo' ? [] : splitResp(t.responsavel))}</div>
+    <div id="rpnote" class="small muted ${t.status==='todo'?'':'hide'}" style="margin-top:10px">👤 Em "A fazer" a tarefa fica sem responsável. Você escolhe quem vai fazer quando iniciar a tarefa.</div>
     <div class="grid g2"><div><label>Fase</label><select id="t_fase">${['Planejamento','Preparação','Execução','Encerramento'].map(f=>`<option ${t.fase===f?'selected':''}>${f}</option>`).join('')}</select></div>
     <div><label>Início</label><input type="date" id="t_ini" value="${t.inicio}"></div><div><label>Fim</label><input type="date" id="t_fim" value="${t.fim}"></div>
     <div><label>Custo (R$)</label><input type="number" id="t_custo" value="${t.custo}"></div>
-    <div><label>Status</label><select id="t_st">${COLS.map(([k,l])=>`<option value="${k}" ${t.status===k?'selected':''}>${l}</option>`).join('')}</select></div></div>
+    <div><label>Status</label><select id="t_st" onchange="const td=this.value==='todo';$('#rpbox').classList.toggle('hide',td);$('#rpnote').classList.toggle('hide',!td)">${COLS.map(([k,l])=>`<option value="${k}" ${t.status===k?'selected':''}>${l}</option>`).join('')}</select></div></div>
     <div class="row" style="margin-top:16px">${id?`<button class="ghost danger" onclick="delTask('${id}')">Excluir</button>`:''}<span class="spacer"></span><button onclick="closeModal()">Cancelar</button><button class="primary" onclick="saveTask('${id||''}')">Salvar</button></div>`);
 }
 function saveTask(id){
-  const rs = readResp(); const v = {titulo:$('#t_tit').value.trim(), responsavel:rs.join(', '), fase:$('#t_fase').value, inicio:$('#t_ini').value, fim:$('#t_fim').value, custo:+$('#t_custo').value||0, status:$('#t_st').value};
+  const st0 = $('#t_st').value; const rs = st0==='todo' ? [] : readResp(); const v = {titulo:$('#t_tit').value.trim(), responsavel:rs.join(', '), fase:$('#t_fase').value, inicio:$('#t_ini').value, fim:$('#t_fim').value, custo:+$('#t_custo').value||0, status:$('#t_st').value};
   if(!v.titulo){ toast('Dê um nome à tarefa'); return; }
   if(v.status!=='todo' && !rs.length){ toast('Escolha quem é o responsável pela tarefa'); return; }
   addToTeam(rs);
